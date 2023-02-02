@@ -1,0 +1,33 @@
+    {{$BACKEND_SIZE := DefaultParam .CL2_CLUSTERIP_BACKEND_SIZE 99}}
+    {{$CLUSTER_IP_SERVICE_COUNT := .clusterIPServiceCount}}
+    {{$actionName := .actionName}}
+    {{$namespaces := 1}}
+    {{$deploymentName := "clusteripbackend"}}
+    {{$DEPLOYMENT_COUNT := .deploymentCount}}
+
+  steps:
+  - name: {{$actionName}} Deployment for ClusterIPs
+    phases:
+    - namespaceRange:
+        min: 1
+        max: {{$namespaces}}
+      replicasPerNamespace: {{$DEPLOYMENT_COUNT}}
+      tuningSet: ILBConstantQPS
+      objectBundle:
+      - basename: clusterip-backends-dep
+        objectTemplatePath: dep-for-clusterip.yaml
+        templateFillMap:
+          NumReplicas: {{$BACKEND_SIZE}}
+          DeploymentName: {{$deploymentName}}
+  - name: {{$actionName}} ClusterIPs
+    phases:
+    - namespaceRange:
+        min: 1
+        max: {{$namespaces}}
+      replicasPerNamespace: {{$CLUSTER_IP_SERVICE_COUNT}}
+      tuningSet: ILBConstantQPS
+      objectBundle:
+      - basename: clusterip-service
+        objectTemplatePath: clusterip.yaml
+        templateFillMap:
+          DeploymentName: {{$deploymentName}}

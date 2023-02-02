@@ -1,0 +1,111 @@
+{{$LARGE_BACKEND_LB_SERVICE_COUNT := DefaultParam .CL2_LARGE_BACKEND_LB_SERVICE_COUNT 2}}
+{{$MEDIUM_BACKEND_LB_SERVICE_COUNT := DefaultParam .CL2_MEDIUM_BACKEND_LB_SERVICE_COUNT 2}}
+{{$SMALL_BACKEND_LB_SERVICE_COUNT := DefaultParam .CL2_SMALL_BACKEND_LB_SERVICE_COUNT 2}}
+{{$ADD_LARGE_BACKEND_LB_SERVICE_COUNT := DefaultParam .CL2_ADD_LARGE_BACKEND_LB_SERVICE_COUNT 4}}
+{{$ADD_MEDIUM_BACKEND_LB_SERVICE_COUNT := DefaultParam .CL2_ADD_MEDIUM_BACKEND_LB_SERVICE_COUNT 4}}
+{{$ADD_SMALL_BACKEND_LB_SERVICE_COUNT := DefaultParam .CL2_ADD_SMALL_BACKEND_LB_SERVICE_COUNT 4}}
+{{$CLUSTERIP_SERVICE_COUNT := DefaultParam .CL2_CLUSTERIP_SERVICE_COUNT 2000}}
+{{$ilbQPS := DefaultParam .CL2_ILB_TEST_QPS 20}}
+
+# Test
+name: ilbload
+namespace:
+  number: 1
+tuningSets:
+- name: ILBConstantQPS
+  qpsLoad:
+    qps: {{$ilbQPS}}
+steps:
+# Mesure each of the ILB services separately, this will provide insight on how long programming
+# ILB takes as a function of number of backends.
+- module:
+    path: /modules/measurements.yaml
+    params:
+      action: start
+- name: ClusterIP creation latency measurements
+  measurements:
+  - Identifier: ClusterIPCreationLatency
+    Method: ServiceCreationLatency
+    Params:
+      action: start
+      waitTimeout: 80m
+      labelSelector: type = clusterip
+- module:
+    path: /modules/clusterips.yaml
+    params:
+      actionName: Create
+      clusterIPServiceCount: {{$CLUSTERIP_SERVICE_COUNT}}
+      deploymentCount: 1
+# wait for these ClusterIPs so that the setup does not interfere with the remaining part of the test.
+- name: ClusterIP creation latency measurements
+  measurements:
+  - Identifier: ClusterIPCreationLatency
+    Method: ServiceCreationLatency
+    Params:
+      action: waitForReady
+      waitTimeout: 20m
+      labelSelector: type = clusterip
+- name: Start measurement for running pods
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: start
+      apiVersion: apps/v1
+      kind: Deployment
+      labelSelector: group = ilb-load
+      operationTimeout: 15m
+# Create ILBs
+- module:
+    path: /modules/services.yaml
+    params:
+      actionName: Create
+      largeBackendLbServiceCount: {{$LARGE_BACKEND_LB_SERVICE_COUNT}}
+      mediumBackendLbServiceCount: {{$MEDIUM_BACKEND_LB_SERVICE_COUNT}}
+      smallBackendLbServiceCount: {{$SMALL_BACKEND_LB_SERVICE_COUNT}}
+- module:
+    path: /modules/measurements.yaml
+    params:
+      action: waitForReady
+# Create additional ILBs
+- module:
+    path: /modules/services.yaml
+    params:
+      actionName: Create additional
+      largeBackendLbServiceCount: {{$ADD_LARGE_BACKEND_LB_SERVICE_COUNT}}
+      mediumBackendLbServiceCount: {{$ADD_MEDIUM_BACKEND_LB_SERVICE_COUNT}}
+      smallBackendLbServiceCount: {{$ADD_SMALL_BACKEND_LB_SERVICE_COUNT}}
+- module:
+    path: /modules/measurements.yaml
+    params:
+      action: waitForReady
+- name: Waiting for objects creation to be completed
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+# Delete ILBs
+- module:
+    path: /modules/services.yaml
+    params:
+      actionName: Delete
+      largeBackendLbServiceCount: 0
+      mediumBackendLbServiceCount: 0
+      smallBackendLbServiceCount: 0
+- module:
+    path: /modules/clusterips.yaml
+    params:
+      actionName: Delete
+      clusterIPServiceCount: 0
+      deploymentCount: 0
+- name: Waiting for objects deletion to be completed
+  measurements:
+  - Identifier: WaitForRunningDeployments
+    Method: WaitForControlledPodsRunning
+    Params:
+      action: gather
+- module:
+    path: /modules/measurements.yaml
+    params:
+      action: gather
