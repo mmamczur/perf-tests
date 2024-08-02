@@ -10,6 +10,8 @@
 {{$NODE_SYNC_TIMEOUT := DefaultParam .CL2_NODE_SYNC_TIMEOUT "30m"}}
 # L4LB_SYNC_TIMEOUT specifies the timeout to wait for LB creation or deletion to complete
 {{$L4LB_SYNC_TIMEOUT := DefaultParam .CL2_L4LB_SYNC_TIMEOUT "30m"}}
+  
+{{$LB_RBS_NEG_ENABLED := DefaultParam .CL2_LB_RBS_NEG_ENABLED "enabled"}}
 
 # adding a fixed value for first version of the test, rate of pod creation not a concern yet.
 {{$lbQPS := 20}}
@@ -53,6 +55,7 @@ steps:
         DeploymentBaseName: lb-dep
         ExternalTrafficPolicy: {{$EXTERNAL_TRAFFIC_POLICY}}
         LoadBalancerType: {{$LOAD_BALANCER_TYPE}}
+        NEGEnabled: {{$LB_RBS_NEG_ENABLED}}
     - basename: lb-dep
       objectTemplatePath: dep.yaml
       templateFillMap:

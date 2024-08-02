@@ -6,6 +6,8 @@ metadata:
     test: l4lb-load
   annotations:
     networking.gke.io/load-balancer-type: {{.LoadBalancerType}}
+    cloud.google.com/l4-rbs: enabled
+    cloud.google.com/l4-rbs-neg: {{.NEGEnabled}}
 spec:
   externalTrafficPolicy: {{.ExternalTrafficPolicy}}
   type: LoadBalancer
