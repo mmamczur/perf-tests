@@ -10,6 +10,8 @@
 {{$NODE_SYNC_TIMEOUT := DefaultParam .CL2_NODE_SYNC_TIMEOUT "30m"}}
 # L4LB_SYNC_TIMEOUT specifies the timeout to wait for LB creation or deletion to complete
 {{$L4LB_SYNC_TIMEOUT := DefaultParam .CL2_L4LB_SYNC_TIMEOUT "30m"}}
+# LB_RBS_ENABLED specifies if the LB should be the L4 NetLB RBS variant
+{{$LB_RBS_ENABLED := DefaultParam .CL2_LB_RBS_ENABLED false}}
 
 # adding a fixed value for first version of the test, rate of pod creation not a concern yet.
 {{$lbQPS := 20}}
@@ -53,6 +55,7 @@ steps:
         DeploymentBaseName: lb-dep
         ExternalTrafficPolicy: {{$EXTERNAL_TRAFFIC_POLICY}}
         LoadBalancerType: {{$LOAD_BALANCER_TYPE}}
+        RBSEnabled: {{$LB_RBS_ENABLED}}
     - basename: lb-dep
       objectTemplatePath: dep.yaml
       templateFillMap:
@@ -67,6 +70,8 @@ steps:
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+# RBS NetLBs don't emit events per service on node sync, this measurement won't work.
+{{if not $LB_RBS_ENABLED}}
 - name: Measure NodeSync latency
   measurements:
   - Identifier: NodeSyncLatency
@@ -75,6 +80,7 @@ steps:
       action: measure
       labelSelector: test = l4lb-load
       waitTimeout: {{$NODE_SYNC_TIMEOUT}}
+{{end}}
 - name: Deleting LBs
   phases:
   - namespaceRange:
@@ -99,7 +105,9 @@ steps:
     Method: ServiceCreationLatency
     Params:
       action: gather
+{{if not $LB_RBS_ENABLED}}
   - Identifier: NodeSyncLatency
     Method: LoadBalancerNodeSyncLatency
     Params:
       action: gather
+{{end}}
