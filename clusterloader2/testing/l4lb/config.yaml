@@ -70,6 +70,12 @@ steps:
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+- name: Wait 15 minutes
+  measurements:
+  - Identifier: Wait
+    Method: Sleep
+    Params:
+      duration: 15m
 # RBS NetLBs don't emit events per service on node sync, this measurement won't work.
 {{if not $LB_RBS_ENABLED}}
 - name: Measure NodeSync latency
