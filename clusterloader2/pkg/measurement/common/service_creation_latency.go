@@ -505,10 +505,15 @@ func (p *pingChecker) run() {
 			addresses := p.collectAddresses(pod)
 			for _, address := range addresses {
 				command := fmt.Sprintf("curl %s", address)
-				_, err = execservice.RunCommand(context.TODO(), pod, command)
+				stdout, err := execservice.RunCommand(context.TODO(), pod, command)
 				if err != nil {
 					break
 				}
+				svcName := ""
+				if p.svc != nil {
+					svcName = p.svc.Name
+				}
+				klog.V(2).Infof("ping svc: %s curl %s: %s", svcName, address, stdout)
 			}
 			if err != nil {
 				success = 0
